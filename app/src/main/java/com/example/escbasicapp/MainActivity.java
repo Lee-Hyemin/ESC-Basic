@@ -1,8 +1,16 @@
 package com.example.escbasicapp;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.os.ConfigurationCompat;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.telephony.PhoneNumberUtils;
 import android.view.View;
@@ -29,8 +37,35 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        checkPermissions();
+
         setUpUI();
 
+        if(phoneNum.getText().length() == 0) {
+            message.setVisibility(View.GONE);
+            backspace.setVisibility(View.GONE);
+        }
+
+    }
+
+    private void checkPermissions(){
+        int resultCall = ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE);
+        int resultSms = ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS);
+
+        if (resultCall == PackageManager.PERMISSION_DENIED || resultSms == PackageManager.PERMISSION_DENIED){
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CALL_PHONE, Manifest.permission.SEND_SMS},1001);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == 1001){
+            if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED){
+                Toast.makeText(this, "권한 허용됨",Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void setUpUI(){
@@ -73,14 +108,17 @@ public class MainActivity extends AppCompatActivity {
         message.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // TODO: 메세지
+                Intent messageIntent = new Intent(MainActivity.this, MessageActivity.class);
+                messageIntent.putExtra("phone_num", phoneNum.getText().toString());
+                startActivity(messageIntent);
             }
         });
 
         call.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // TODO: 전화
+                Intent callIntent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + phoneNum.getText()));
+                startActivity(callIntent);
             }
         });
 
@@ -89,7 +127,23 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 if(phoneNum.getText().length() > 0) {
                     phoneNum.setText(changeToDial(phoneNum.getText().subSequence(0, phoneNum.getText().length() -1).toString()));
+
+                    if(phoneNum.getText().length() == 0) {
+                        message.setVisibility(View.GONE);
+                        backspace.setVisibility(View.GONE);
+
+                    }
                 }
+            }
+        });
+
+        backspace.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                phoneNum.setText("");
+                message.setVisibility(View.GONE);
+                backspace.setVisibility(View.GONE);
+                return true;
             }
         });
     }
@@ -99,6 +153,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 phoneNum.setText(changeToDial(phoneNum.getText() + input));
+
+                message.setVisibility(View.VISIBLE);
+                backspace.setVisibility(View.VISIBLE);
             }
         });
     }
@@ -113,27 +170,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private  String changeToDial(String phoneNum){
-        // 전화번호 기준 01037440834 || 010-1234-5678
-        // 4글자 이상일때 3번째 숫자 다음에 - (010-3)
-        // 8글자 이상이면 3번째 숫자 다음이랑 7번째 다음에 - (010-3744-0)
-        // 12글자 이상이면 - 전부 제거
-        // 특수문자 있으면 - 전부 제거
-        String formatPhoneNum = phoneNum.replace("-","");
-
-        if(!phoneNum.contains("*") && !phoneNum.contains("#")) {
-            if (formatPhoneNum.length() < 4 || formatPhoneNum.length() >= 12){
-                phoneNum = formatPhoneNum;
-            } else if (formatPhoneNum.length() >= 4 && formatPhoneNum.length() < 8) {
-                if(!phoneNum.contains("-"))
-                    phoneNum = formatPhoneNum.substring(0, 3) + "-" + formatPhoneNum.substring(3);
-            } else if (formatPhoneNum.length() >= 8 && formatPhoneNum.length() < 12) {
-                if(!phoneNum.substring(7).contains("-"))
-                    phoneNum = formatPhoneNum.substring(0, 3) + "-" + formatPhoneNum.substring(3, 7) + "-" + formatPhoneNum.substring(7);
-            }
+    private  String changeToDial(String phoneNum) {
+        phoneNum = phoneNum.replace("-", "");
+        if (phoneNum.length() >= 4 && phoneNum.length() <= 7) {
+            phoneNum = phoneNum.substring(0, 3) + "-" + phoneNum.substring(3);
+        } else if (phoneNum.length() >= 8 && phoneNum.length() <= 11) {
+            phoneNum = phoneNum.substring(0, 3) + "-" + phoneNum.substring(3, 7) + "-" + phoneNum.substring(7);
+        } else if (phoneNum.length() > 11) {
+            phoneNum = phoneNum.replaceAll("-", "");
         }
-        else{
-            phoneNum = formatPhoneNum;
+
+        if (phoneNum.contains("*") || phoneNum.contains("#") || phoneNum.contains("+")) {
+            phoneNum = phoneNum.replaceAll("-", "");
         }
 
         return phoneNum;

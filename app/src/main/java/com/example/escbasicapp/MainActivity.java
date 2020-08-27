@@ -19,6 +19,8 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.w3c.dom.Text;
+
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
@@ -32,6 +34,9 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton message;
     private ImageButton call;
     private ImageButton backspace;
+
+    // 전화번호 검색
+    private TextView name;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +79,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setUpUI(){
+        // 전화번호 검색
+        name = findViewById(R.id.main_tv_name);
+
         addContact = findViewById(R.id.main_ibtn_add);
         contact = findViewById(R.id.main_ibtn_contact);
         phoneNum = findViewById(R.id.main_tv_phone);
@@ -92,6 +100,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 Intent addIntent = new Intent(MainActivity.this, AddEditActivity.class);
+                addIntent.putExtra("phone_num", phoneNum.getText().toString());
+                addIntent.putExtra("add_edit","add");
                 startActivity(addIntent);
             }
         });
@@ -140,6 +150,7 @@ public class MainActivity extends AppCompatActivity {
 
                     }
                 }
+                findPhone();
             }
         });
 
@@ -149,6 +160,8 @@ public class MainActivity extends AppCompatActivity {
                 phoneNum.setText("");
                 message.setVisibility(View.GONE);
                 backspace.setVisibility(View.GONE);
+
+                findPhone();
                 return true;
             }
         });
@@ -162,8 +175,32 @@ public class MainActivity extends AppCompatActivity {
 
                 message.setVisibility(View.VISIBLE);
                 backspace.setVisibility(View.VISIBLE);
+
+                findPhone();
             }
         });
+    }
+
+    private void findPhone(){
+        String find = phoneNum.getText().toString().replaceAll("-", "");
+        boolean phoneNumExist = false;
+        name.setText("");
+
+        for (int i = 0; i < DummyData.contacts.size(); i++) {
+            if (DummyData.contacts.get(i).getPhone().replaceAll("-","").contains(find)){
+                if(name.getText().toString().equals("")){
+                    name.setText(DummyData.contacts.get(i).getName());
+                } else {
+                    name.setText(name.getText().toString() + ", " + DummyData.contacts.get(i).getName());
+                }
+                phoneNumExist = true;
+            }
+        }
+
+        if(!phoneNumExist || find.equals("")){
+            name.setText("");
+        }
+
     }
 
     private int getResourceID(final String resName, final String resType, final Context ctx){
